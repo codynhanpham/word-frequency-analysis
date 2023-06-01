@@ -1,0 +1,17 @@
+[package]
+name = "word-frequency-analysis"
+authors = ["Cody Nhan Pham"]
+version = "0.1.0"
+edition = "2021"
+description = "A blazingly fast and simple tool to quickly analyze and visualize the frequency of words in text files."
+license = "MIT"
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
+
+[dependencies]
+rayon = "1.7.0"
+serde_json = "1.0.96"
