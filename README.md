@@ -56,7 +56,10 @@ After just a bit, you will see the results in the `input\outputs` folder.
 *This might change in the future when the visualization feature is added.*
     
         input (the folder you specified)
-        └───outputs
+            ├── txtfile1.txt
+            ├── volume2.txt
+            ├── ...
+            └───outputs
                 input-file1_wordFreq.csv
                 input-file1_wordFreq.txt
                 ...
