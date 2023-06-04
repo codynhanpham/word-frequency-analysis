@@ -64,7 +64,7 @@ pub fn get_file_dir(prompt: &str, is_optional: bool) -> String {
 
 // Prompt to get a file_dir, only allow .json files, then parse the file into a HashMap, collect "phrases" into a Vec<String> and return it
 pub fn get_phrases_from_json(prompt: &str) -> Vec<String> {
-    let mut input = get_file_dir(prompt, true);
+    let input = get_file_dir(prompt, true);
 
     // if input is empty, return an empty Vec
     if input.is_empty() {
@@ -74,7 +74,7 @@ pub fn get_phrases_from_json(prompt: &str) -> Vec<String> {
     // check if file is a .json file
     if !input.ends_with(".json") {
         println!("File is not a .json file! Please enter a valid .json file path.");
-        input = get_file_dir(prompt, true);
+        return get_phrases_from_json(prompt);
     }
 
     // read file
