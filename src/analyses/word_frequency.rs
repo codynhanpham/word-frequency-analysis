@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use rayon::prelude::*;
 
@@ -26,9 +26,8 @@ pub fn main(folder_dir: &String, raw_data: HashMap<String, Vec<String>>, data: H
     // start time for the whole function
     let start_total = std::time::Instant::now();
 
-    // start time
     let start = std::time::Instant::now();
-    // Count frequency of each word in each file and chapters (in parallel) (case sensitive)
+    // Count frequency of each word in each file and chapters (in parallel) (case sensitive, but normalized capitalization)
     let word_freq: HashMap<String, Vec<HashMap<String, usize>>> = data
         .par_iter()
         .map(|(file_name, chapters)| {
@@ -95,28 +94,34 @@ pub fn main(folder_dir: &String, raw_data: HashMap<String, Vec<String>>, data: H
     println!("\x1b[2m  Frequency maps generated in {} ms\x1b[0m", duration.as_millis());
 
     let start = std::time::Instant::now();
+    let simple_word_freq_map_no_stopwords = utils::remove_stopwords_no_chapters(&simple_word_freq_map);
+    let duration = start.elapsed();
+    println!("\x1b[2m  Stopwords removed in {} ms\x1b[0m", duration.as_millis());
+
+    let start = std::time::Instant::now();
     // get all the file names
     let mut file_names: Vec<String> = Vec::new();
     for (file_name, _) in &simple_word_freq_map {
         file_names.push(file_name.clone());
     }
     file_names.sort();
-    // get all the words
-    let mut words: Vec<String> = Vec::new();
+    // get all the words into a HashSet
+    let mut words_complete: HashSet<String> = HashSet::new();
     for (_, word_freq) in &simple_word_freq_map {
-        for (word, _) in word_freq {
-            if !words.contains(word) {
-                words.push(word.clone());
-            }
+        for word in word_freq.keys() {
+            words_complete.insert(word.clone());
+        }
+    }
+    // same as words_complete, but without stopwords
+    let mut words_no_stopword: HashSet<String> = HashSet::new();
+    for (_, word_freq) in &simple_word_freq_map_no_stopwords {
+        for word in word_freq.keys() {
+            words_no_stopword.insert(word.clone());
         }
     }
     let duration = start.elapsed();
     println!("\x1b[2m  Formating data in {} ms\x1b[0m", duration.as_millis());
 
-    let start = std::time::Instant::now();
-    let simple_word_freq_map_no_stopwords = utils::remove_stopwords_no_chapters(&simple_word_freq_map);
-    let duration = start.elapsed();
-    println!("\x1b[2m  Stopwords removed in {} ms\x1b[0m", duration.as_millis());
 
     // Generate CSV table(s)
     let start = std::time::Instant::now();
@@ -127,11 +132,11 @@ pub fn main(folder_dir: &String, raw_data: HashMap<String, Vec<String>>, data: H
         fs::create_dir(&outputs_folder_path).expect("Failed to create outputs folder");
     }
 
-    let csv_string = tables::combined_file_map_to_csv_string(&file_names, &words, &simple_word_freq_map, &phrases);
+    let csv_string = tables::combined_file_map_to_csv_string(&file_names, &words_complete, &simple_word_freq_map, &phrases);
     let output_file_path = outputs_folder_path.join(format!("{}_wordFreq.csv", folder_name));
     fs::write(&output_file_path, csv_string.as_bytes()).expect("Unable to write file");
 
-    let csv_string = tables::combined_file_map_to_csv_string(&file_names, &words, &simple_word_freq_map_no_stopwords, &phrases);
+    let csv_string = tables::combined_file_map_to_csv_string(&file_names, &words_no_stopword, &simple_word_freq_map_no_stopwords, &phrases);
     let output_file_path = outputs_folder_path.join(format!("{}_wordFreq_no-stopwords.csv", folder_name));
     fs::write(&output_file_path, csv_string.as_bytes()).expect("Unable to write file");
 

@@ -54,12 +54,11 @@ fn main() {
     analyses::word_frequency::main(&folder_dir, raw_data, data, phrases);
 
 
+
     // end time
     let duration = start.elapsed();
     println!("------------------------------------------------------------");
     println!("Total time taken: {} ms\n", duration.as_millis());
-
-
 
     // wait for user input to exit
     utils::utils::get_input("Press enter to exit...");

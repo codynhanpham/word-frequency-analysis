@@ -1,7 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-// same as above, but take a hashmap of <filename, <word, frequency>> and return a csv string
-pub fn combined_file_map_to_csv_string(file_names: &Vec<String>, words_list: &Vec<String>, data: &HashMap<String, HashMap<String, usize>>, phrases: &Vec<String>) -> String {
+pub fn combined_file_map_to_csv_string(file_names: &Vec<String>, words_list: &HashSet<String>, data: &HashMap<String, HashMap<String, usize>>, phrases: &Vec<String>) -> String {
     // target is a csv file with the following format
     // headers: word, file1, file2, file3, file4, file5..., total
     // each row is a word, and the frequency of that word in each file, and the total frequency accross all files
@@ -9,12 +8,10 @@ pub fn combined_file_map_to_csv_string(file_names: &Vec<String>, words_list: &Ve
 
     println!("\nGenerating a CSV string...");
 
-    let mut words = words_list.clone();
-
     let start = std::time::Instant::now();
-    // create a hashmap of <word, total frequency> so that we can sort the words by their total frequency
+    // Create a hashmap of <word, total frequency> so that we can sort the words by their total frequency
     let mut total_freq: HashMap<String, usize> = HashMap::new();
-    for word in &words {
+    for word in words_list {
         let mut freq = 0;
         for (_, word_freq) in data {
             if word_freq.contains_key(word) {
@@ -23,8 +20,6 @@ pub fn combined_file_map_to_csv_string(file_names: &Vec<String>, words_list: &Ve
         }
         total_freq.insert(word.clone(), freq);
     }
-    // sort the words by their total frequency
-    words.sort_by(|a, b| total_freq.get(b).unwrap().cmp(total_freq.get(a).unwrap()));
 
     // categorize words into different vectors based on their properties
     let mut target_phrases: Vec<String> = Vec::new();
@@ -32,8 +27,7 @@ pub fn combined_file_map_to_csv_string(file_names: &Vec<String>, words_list: &Ve
     let mut lowercase_words: Vec<String> = Vec::new();
     let mut numeric_numbers: Vec<String> = Vec::new();
 
-    for word in &words {
-        // if the word is a target phrase, add it to the target_phrases vector
+    for word in words_list {
         if phrases.contains(word) {
             target_phrases.push(word.to_string());
         }
@@ -48,7 +42,6 @@ pub fn combined_file_map_to_csv_string(file_names: &Vec<String>, words_list: &Ve
         }
     }
 
-    // sort the words: target phrases (asc), capitalized words (asc), lowercase words (asc), numeric numbers (asc), then for each group, sort by total frequency (desc)
     target_phrases.sort();
     capitalized_words.sort();
     lowercase_words.sort();
@@ -68,6 +61,8 @@ pub fn combined_file_map_to_csv_string(file_names: &Vec<String>, words_list: &Ve
     let duration = start.elapsed();
     println!("\x1b[2m  Sorting data in {} ms\x1b[0m", duration.as_millis());
     
+
+    // Create the csv string
     let start = std::time::Instant::now();
     // create the headers
     let mut result = String::from("Words");
