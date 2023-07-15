@@ -6,8 +6,8 @@ A simple tool to quickly analyze and visualize the frequency of words in text fi
 
 - [x] Batch process all `TXT` files in a folder
 - [x] Normalization of capitalized words
+- [x] Remove stop words
 - [x] Specify any additional target phrases to include
-- [x] Generate a **word frequency table** in `CSV` and `TXT` formats
 - [ ] Visualizations (work in progress)
 
 
@@ -60,13 +60,11 @@ After just a bit, you will see the results in the `input\outputs` folder.
             ├── volume2.txt
             ├── ...
             └───outputs
-                input-file1_wordFreq.csv
-                input-file1_wordFreq.txt
-                ...
-                (data_joined.csv)
+                input_wordFreq.csv
+                input_wordFreq_no-stopwords.csv
 
 
-If the folder contains multiple `TXT` files, the tool will generate an additional `data_joined.csv` file that contains the combined results of all the files.
+The output is a combined `CSV` file containing the frequency of all words in all input files.
 
 ### Finally
 
