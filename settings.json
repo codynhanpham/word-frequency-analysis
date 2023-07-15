@@ -2,5 +2,6 @@
     "phrases": [
         "put any specific phrase you want to look for here",
         "!t c4n b3 4nyth1ng y0u w4nt 1t t0 b3"
-    ]
+    ],
+    "chapter_separator": "<|eoc|>"
 }

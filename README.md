@@ -35,7 +35,7 @@ Simply run the executable file and follow the instructions as you go.
 
 ***Note that the tool take in a folder path as input, not a file path. The tool will then process all `TXT` files in the folder.***
 
-The target phrases can be specified in a `JSON` file, following [this format](https://github.com/codynhanpham/word-frequency-analysis/blob/main/lookup-phrases.json):
+The target phrases can be specified in a `JSON` file, following [this format](https://github.com/codynhanpham/word-frequency-analysis/blob/main/settings.json):
 
 ```json
 {

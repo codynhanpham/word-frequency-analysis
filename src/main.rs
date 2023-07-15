@@ -18,7 +18,13 @@ fn main() {
     // get folder directory
     let folder_dir = utils::utils::get_folder_dir("Enter txt (documents) folder directory: ");
     // get target phrases json file path
-    let phrases = utils::utils::get_phrases_from_json("Enter the target phrases json file path (leave empty to disable): ");
+    let settings = utils::utils::get_json_path("Enter the settings.json file path (leave empty for default): ");
+
+    // get target phrases
+    let phrases = utils::utils::get_phrases_from_json(&settings);
+    // get chapter separator: from settings.json or default to "<|eoc|>"
+    let chapter_separator = utils::utils::get_chapter_separator_from_json(&settings, "<|eoc|>".to_string());
+
 
     println!("------------------------------------------------------------");
     println!("Analyzing folder: {}", folder_dir);
@@ -45,7 +51,7 @@ fn main() {
 
 
     // Digest all files (Split by chapter if possible, and remove punctuations, split into words, and normalize capitalization)
-    let digest_data = utils::utils::digest_files(&txt_files);
+    let digest_data = utils::utils::digest_files(&txt_files, &chapter_separator);
     let raw_data = digest_data.0;
     let data = digest_data.1;
     let corpus = digest_data.2;

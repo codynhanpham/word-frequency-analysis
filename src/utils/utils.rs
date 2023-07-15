@@ -77,28 +77,55 @@ pub fn get_file_dir(prompt: &str, is_optional: bool) -> String {
     input
 }
 
-// Prompt to get a file_dir, only allow .json files, then parse the file into a HashMap, collect "phrases" into a Vec<String> and return it
-pub fn get_phrases_from_json(prompt: &str) -> Vec<String> {
+pub fn get_json_path(prompt: &str) -> String {
     let input = get_file_dir(prompt, true);
 
-    // if input is empty, return an empty Vec
+    // if input is empty, return an empty String
     if input.is_empty() {
-        return Vec::new();
+        return input;
     }
 
     // check if file is a .json file
     if !input.ends_with(".json") {
         println!("File is not a .json file! Please enter a valid .json file path.");
-        return get_phrases_from_json(prompt);
+        return get_json_path(prompt);
+    }
+
+    input
+}
+
+pub fn get_phrases_from_json(json_path: &String) -> Vec<String> {
+    // return an empty Vec if json_path is empty
+    if json_path.is_empty() {
+        return Vec::new();
     }
 
     // read file
-    let phrases_txt = fs::read_to_string(&input).expect("Unable to read file");
+    let phrases_txt = fs::read_to_string(&json_path).expect("Unable to read file");
     let phrases_parsed: Value = serde_json::from_str(&phrases_txt).expect("JSON was not well-formatted");
     // a vector of phrases to be targeted
-    let phrases: Vec<String> = phrases_parsed["phrases"].as_array().unwrap().iter().map(|s| s.as_str().unwrap().to_string()).collect();
+    let phrases: Vec<String> = phrases_parsed["phrases"].as_array().unwrap_or(&Vec::new()).iter().map(|s| s.as_str().unwrap().to_string()).collect();
 
     phrases
+}
+
+pub fn get_chapter_separator_from_json(json_path: &String, default: String) -> String {
+    // return default String if json_path is empty
+    if json_path.is_empty() {
+        return default;
+    }
+
+    // read file
+    let phrases_txt = fs::read_to_string(&json_path).expect("Unable to read file");
+    let phrases_parsed: Value = serde_json::from_str(&phrases_txt).expect("JSON was not well-formatted");
+    // a vector of phrases to be targeted
+    let mut chapter_separator = phrases_parsed["chapter_separator"].as_str().unwrap_or("<|eoc|>").to_string();
+    // if chapter_separator is empty, use default
+    if chapter_separator.is_empty() {
+        chapter_separator = default;
+    }
+
+    chapter_separator
 }
 
 fn split_into_chapters(text: &str, separator: &str) -> Vec<String> {
@@ -135,14 +162,14 @@ fn split_into_words(text: &str) -> Vec<String> {
 }
 
 // HashMap of <file name, Vec<Vec<String>> of chapters<words>>
-fn file_collection(file_list: &Vec<PathBuf>) -> (HashMap<String, Vec<String>>, HashMap<String, Vec<Vec<String>>>) {
+fn file_collection(file_list: &Vec<PathBuf>, chapter_sep: &str) -> (HashMap<String, Vec<String>>, HashMap<String, Vec<Vec<String>>>) {
     let mut result_chapters: HashMap<String, Vec<String>> = HashMap::new();
     let mut result_words: HashMap<String, Vec<Vec<String>>> = HashMap::new();
     for file in file_list {
         let file_name = file.file_stem().unwrap().to_str().unwrap();
         let text = fs::read_to_string(file).expect("Failed to read file");
 
-        let chapters = split_into_chapters(&text, "<|eoc|>");
+        let chapters = split_into_chapters(&text, chapter_sep);
 
         // insert the raw text into the result_chapters hashmap
         result_chapters.insert(file_name.to_string(), chapters.clone());
@@ -179,8 +206,8 @@ fn generate_word_corpus_set(file_collection: &HashMap<String, Vec<Vec<String>>>)
 }
 
 // using the corpus, normalize the words in the file_collection and return a new file_collection
-pub fn digest_files(file_list: &Vec<PathBuf>) -> (HashMap<String, Vec<String>>, HashMap<String, Vec<Vec<String>>>, HashSet<String>) {
-    let file_collection = file_collection(file_list);
+pub fn digest_files(file_list: &Vec<PathBuf>, chapter_sep: &str) -> (HashMap<String, Vec<String>>, HashMap<String, Vec<Vec<String>>>, HashSet<String>) {
+    let file_collection = file_collection(file_list, chapter_sep);
     let corpus = generate_word_corpus_set(&file_collection.1);
     
     let start = std::time::Instant::now();
