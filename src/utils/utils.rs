@@ -207,6 +207,7 @@ pub fn digest_files(file_list: &Vec<PathBuf>) -> (HashMap<String, Vec<String>>, 
 pub fn remove_stopwords_no_chapters(data: &HashMap<String, HashMap<String, usize>>) -> HashMap<String, HashMap<String, usize>> {
     // data is <file name, <word, frequency>>
     // delete stopwords from each file
+    let start = std::time::Instant::now();
 
     // use parallel iterator
     let result: HashMap<String, HashMap<String, usize>> = data
@@ -222,5 +223,35 @@ pub fn remove_stopwords_no_chapters(data: &HashMap<String, HashMap<String, usize
         })
         .collect();
 
+    let duration = start.elapsed();
+    println!("\x1b[2m  Stopwords removed in {} ms\x1b[0m", duration.as_millis());
+    result
+}
+
+pub fn remove_stopwords_with_chapters(data: &HashMap<String, Vec<HashMap<String, usize>>>) -> HashMap<String, Vec<HashMap<String, usize>>> {
+    // data is <file name, chapters<word, frequency>>
+    // delete stopwords from each file
+    let start = std::time::Instant::now();
+
+    // use parallel iterator
+    let result: HashMap<String, Vec<HashMap<String, usize>>> = data
+        .par_iter()
+        .map(|(file_name, chapters)| {
+            let mut new_chapters: Vec<HashMap<String, usize>> = Vec::new();
+            for chapter in chapters {
+                let mut new_word_freq: HashMap<String, usize> = HashMap::new();
+                for (word, freq) in chapter {
+                    if !STOPWORDS.contains(word) {
+                        new_word_freq.insert(word.to_string(), *freq);
+                    }
+                }
+                new_chapters.push(new_word_freq);
+            }
+            (file_name.to_string(), new_chapters)
+        })
+        .collect();
+
+    let duration = start.elapsed();
+    println!("\x1b[2m  Stopwords removed in {} ms\x1b[0m", duration.as_millis());
     result
 }

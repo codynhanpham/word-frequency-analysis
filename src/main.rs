@@ -8,6 +8,7 @@ mod utils {
 
 mod analyses {
     pub mod word_frequency;
+    pub mod tf_idf;
 }
 
 fn main() {
@@ -50,9 +51,9 @@ fn main() {
     let corpus = digest_data.2;
     println!("There are {} unique words in the corpus. (raw, case-sensitive)", corpus.len());
 
-    // Frequency analysis
-    analyses::word_frequency::main(&folder_dir, raw_data, data, phrases);
-
+    // Analysis
+    let word_freq_map = analyses::word_frequency::main(&folder_dir, raw_data, data, &phrases);
+    let _tf_idf = analyses::tf_idf::main(&folder_dir, &word_freq_map, &phrases);
 
 
     // end time
@@ -60,6 +61,12 @@ fn main() {
     println!("------------------------------------------------------------");
     println!("Total time taken: {} ms\n", duration.as_millis());
 
+
+    // drop all data
+    drop(corpus);
+    drop(word_freq_map);
+    drop(_tf_idf);
+    
     // wait for user input to exit
     utils::utils::get_input("Press enter to exit...");
 }

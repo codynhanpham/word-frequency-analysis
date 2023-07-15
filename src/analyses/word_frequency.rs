@@ -20,9 +20,9 @@ fn phrase_frequency(text: &str, phrases: &Vec<String>) -> HashMap<String, usize>
 // also take in phrases to search for and make a table of the frequency of those phrases
 // then combine all the data into a single hashmap matching the file name with the word frequency hashmap
 // master word frequency hashmap: HashMap<String, Vec<HashMap<String, usize>>> is a hashmap of <file name, chapter<<word, frequency>>>
-pub fn main(folder_dir: &String, raw_data: HashMap<String, Vec<String>>, data: HashMap<String, Vec<Vec<String>>>, phrases: Vec<String>) -> HashMap<String, Vec<HashMap<String, usize>>> {
+pub fn main(folder_dir: &String, raw_data: HashMap<String, Vec<String>>, data: HashMap<String, Vec<Vec<String>>>, phrases: &Vec<String>) -> HashMap<String, Vec<HashMap<String, usize>>> {
     println!("------------------------------------------------------------");
-    println!("Analyzing word frequency...");
+    println!("ANALYZING WORD FREQUENCY...");
     // start time for the whole function
     let start_total = std::time::Instant::now();
 
@@ -93,10 +93,7 @@ pub fn main(folder_dir: &String, raw_data: HashMap<String, Vec<String>>, data: H
     let duration = start.elapsed();
     println!("\x1b[2m  Frequency maps generated in {} ms\x1b[0m", duration.as_millis());
 
-    let start = std::time::Instant::now();
     let simple_word_freq_map_no_stopwords = utils::remove_stopwords_no_chapters(&simple_word_freq_map);
-    let duration = start.elapsed();
-    println!("\x1b[2m  Stopwords removed in {} ms\x1b[0m", duration.as_millis());
 
     let start = std::time::Instant::now();
     // get all the file names
@@ -132,11 +129,11 @@ pub fn main(folder_dir: &String, raw_data: HashMap<String, Vec<String>>, data: H
         fs::create_dir(&outputs_folder_path).expect("Failed to create outputs folder");
     }
 
-    let csv_string = tables::combined_file_map_to_csv_string(&file_names, &words_complete, &simple_word_freq_map, &phrases);
+    let csv_string = tables::combined_file_map_to_csv_string_usize(&file_names, &words_complete, &simple_word_freq_map, &phrases);
     let output_file_path = outputs_folder_path.join(format!("{}_wordFreq.csv", folder_name));
     fs::write(&output_file_path, csv_string.as_bytes()).expect("Unable to write file");
 
-    let csv_string = tables::combined_file_map_to_csv_string(&file_names, &words_no_stopword, &simple_word_freq_map_no_stopwords, &phrases);
+    let csv_string = tables::combined_file_map_to_csv_string_usize(&file_names, &words_no_stopword, &simple_word_freq_map_no_stopwords, &phrases);
     let output_file_path = outputs_folder_path.join(format!("{}_wordFreq_no-stopwords.csv", folder_name));
     fs::write(&output_file_path, csv_string.as_bytes()).expect("Unable to write file");
 
@@ -152,5 +149,6 @@ pub fn main(folder_dir: &String, raw_data: HashMap<String, Vec<String>>, data: H
     // end time
     let duration = start_total.elapsed();
     println!("Word frequency analysis completed in {} ms", duration.as_millis());
+
     master_word_freq_map
 }
