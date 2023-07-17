@@ -206,18 +206,21 @@ fn generate_word_corpus_set(file_collection: &HashMap<String, Vec<Vec<String>>>)
 }
 
 // using the corpus, normalize the words in the file_collection and return a new file_collection
-pub fn digest_files(file_list: &Vec<PathBuf>, chapter_sep: &str) -> (HashMap<String, Vec<String>>, HashMap<String, Vec<Vec<String>>>, HashSet<String>) {
+pub fn digest_files(file_list: &Vec<PathBuf>, chapter_sep: &str) -> (HashMap<String, Vec<String>>, HashMap<String, Vec<Vec<String>>>, HashSet<String>, HashSet<String>) {
     let file_collection = file_collection(file_list, chapter_sep);
     let corpus = generate_word_corpus_set(&file_collection.1);
     
     let start = std::time::Instant::now();
     let mut result_words: HashMap<String, Vec<Vec<String>>> = HashMap::new();
+    let mut result_words_corpus: HashSet<String> = HashSet::new(); // this is the corpus of the normalized words
     for (file_name, chapters) in file_collection.1 {
         let new_chapters = chapters.iter().map(|chapter| {
             chapter.iter().map(|word| {
                 if let Some(lowercase_word) = corpus.get(&word.to_lowercase()) {
+                    result_words_corpus.insert(lowercase_word.to_string());
                     lowercase_word.to_string()
                 } else {
+                    result_words_corpus.insert(word.to_string());
                     word.to_string()
                 }
             }).collect()
@@ -228,7 +231,7 @@ pub fn digest_files(file_list: &Vec<PathBuf>, chapter_sep: &str) -> (HashMap<Str
     println!("\x1b[2m  Words' capitalization normalized in {} ms\x1b[0m", duration.as_millis());
 
     // return both the HashMap and the corpus
-    (file_collection.0, result_words, corpus)
+    (file_collection.0, result_words, corpus, result_words_corpus)
 }
 
 pub fn remove_stopwords_no_chapters(data: &HashMap<String, HashMap<String, usize>>) -> HashMap<String, HashMap<String, usize>> {

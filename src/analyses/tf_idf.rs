@@ -7,9 +7,10 @@ use crate::utils::utils;
 use crate::utils::tables;
 
 // TF: (frequency of a word in the document) / (total number of words in the document)
-// IDF: log_10(total number of documents / (Number of documents with the word in it + 1))
+// IDF: log_10(total number of documents / (Number of documents with the word in it).max(1)) --> if the word is not in any document, then the denominator is 1
+// Log a warning if number of documents with the word in it is 0 and was forced to 1 if this happens
 // TF-IDF: TF * IDF
-fn calculate_tf_idf(data: &HashMap<String, Vec<HashMap<String, usize>>>) -> HashMap<String, HashMap<String, f64>> {
+fn calculate_tf_idf(data: &HashMap<String, Vec<HashMap<String, usize>>>) -> HashMap<String, Vec<HashMap<String, f64>>> {
     // return a hashmap of <file name, <word, tf-idf>>
     let start = std::time::Instant::now();
     // Number of documents = number of chapters across all files
@@ -27,35 +28,24 @@ fn calculate_tf_idf(data: &HashMap<String, Vec<HashMap<String, usize>>>) -> Hash
     }
 
     // Calculate TF-IDF in parallel
-    let tf_idf: HashMap<String, HashMap<String, f64>> = data
+    let tf_idf: HashMap<String, Vec<HashMap<String, f64>>> = data 
         .par_iter()
         .map(|(file_name, chapters)| {
-            let mut tf_idf: HashMap<String, f64> = HashMap::new();
+            let mut tf_idf_file: Vec<HashMap<String, f64>> = Vec::new();
             for chapter in chapters {
-                // calculate TF
-                let mut tf: HashMap<String, f64> = HashMap::new();
-                let total_number_of_words = chapter.values().sum::<usize>() as f64;
-                for (word, freq) in chapter {
-                    tf.insert(word.clone(), *freq as f64 / total_number_of_words);
-                }
-
-                // calculate IDF
-                let mut idf: HashMap<String, f64> = HashMap::new();
-                for (word, _) in chapter {
-                    if *number_of_documents_with_word.get(word).unwrap() == 0 {
-                        println!("\x1b[31m  IDF denominator for word \"{}\" is 0. Forcing value to be 1. Please check your data!!!\x1b[0m", word);
-                        idf.insert(word.clone(), (number_of_documents as f64).log10());
-                    } else {
-                        idf.insert(word.clone(), (number_of_documents as f64 / (*number_of_documents_with_word.get(word).unwrap() as f64)).log10());
+                let mut tf_idf_chapter: HashMap<String, f64> = HashMap::new();
+                for (word, frequency) in chapter {
+                    let tf = *frequency as f64 / chapter.values().sum::<usize>() as f64;
+                    let idf = (number_of_documents as f64 / *number_of_documents_with_word.get(word).unwrap_or(&1) as f64).log10();
+                    // warning if number of documents with the word in it is 0 and was forced to 1
+                    if *number_of_documents_with_word.get(word).unwrap_or(&0) == 0 {
+                        println!("\x1b[33m  WARNING: Number of documents with the word \"{}\" in it is 0 and was forced to 1 for IDF calculation\x1b[0m", word);
                     }
+                    tf_idf_chapter.insert(word.clone(), tf * idf);
                 }
-
-                // calculate TF-IDF
-                for (word, _) in chapter {
-                    tf_idf.insert(word.clone(), tf.get(word).unwrap() * idf.get(word).unwrap());
-                }
+                tf_idf_file.push(tf_idf_chapter);
             }
-            (file_name.to_string(), tf_idf)
+            (file_name.clone(), tf_idf_file)
         })
         .collect();
 
@@ -69,7 +59,7 @@ fn calculate_tf_idf(data: &HashMap<String, Vec<HashMap<String, usize>>>) -> Hash
 // basically similar to word_frequency.rs, but with tf-idf values, and depends on the word_frequency.rs result
 // main take in frequency data and generate tf-idf values for each word, along with a master tf-idf hashmap
 // master tf-idf hashmap: <HashMap<String, usize>> is a hashmap of <word, tf-idf>
-pub fn main(folder_dir: &String, data: &HashMap<String, Vec<HashMap<String, usize>>>, phrases: &Vec<String>) -> HashMap<String, HashMap<String, f64>> {
+pub fn main(folder_dir: &String, data: &HashMap<String, Vec<HashMap<String, usize>>>, phrases: &Vec<String>) -> HashMap<String, Vec<HashMap<String, f64>>> {
     // TF-IDF is calculated using the chapters as "documents"
     // If there are no chapters, then each file is considered a "document"
     // If there is only 1 file and 1 chapter, do not calculate TF-IDF and return an empty hashmap
@@ -109,12 +99,15 @@ pub fn main(folder_dir: &String, data: &HashMap<String, Vec<HashMap<String, usiz
     }
     file_names.sort();
 
-    // Calculate TF-IDF: full corpus and no stopwords
-    let tf_idf = calculate_tf_idf(data);
-    let tf_idf_words: HashSet<String> = tf_idf.values().map(|word_freq| word_freq.keys().cloned().collect::<HashSet<String>>()).flatten().collect();
-
+    // Calculate TF-IDF: no stopwords only
     let tf_idf_no_stopwords = calculate_tf_idf(&utils::remove_stopwords_with_chapters(data));
-    let tf_idf_no_stopwords_words: HashSet<String> = tf_idf_no_stopwords.values().map(|word_freq| word_freq.keys().cloned().collect::<HashSet<String>>()).flatten().collect();
+    let tf_idf_no_stopwords_words: HashSet<String> = tf_idf_no_stopwords
+        .values()
+        .flatten()
+        .map(|chapter| chapter.keys())
+        .flatten()
+        .map(|word| word.clone())
+        .collect();
 
     // Generate TF-IDF csv file(s)
     let start = std::time::Instant::now();
@@ -125,13 +118,11 @@ pub fn main(folder_dir: &String, data: &HashMap<String, Vec<HashMap<String, usiz
         fs::create_dir(&outputs_folder_path).expect("Failed to create outputs folder");
     }
 
-    let tf_idf_csv_string = tables::combined_file_map_to_csv_string_f64(&file_names, &tf_idf_words, &tf_idf, &phrases);
-    let output_file_path = outputs_folder_path.join(format!("{}_tf-idf.csv", folder_name));
+    let tf_idf_csv_string = tables::tf_idf_combined_file_map_to_csv_string_f64_fullsize(&file_names, &tf_idf_no_stopwords_words, &tf_idf_no_stopwords, &phrases);
+    let output_file_path = outputs_folder_path.join(format!("{}_TF-IDF_no-stopwords.csv", folder_name));
     fs::write(&output_file_path, tf_idf_csv_string.as_bytes()).expect("Unable to write file");
 
-    let tf_idf_csv_string = tables::combined_file_map_to_csv_string_f64(&file_names, &tf_idf_no_stopwords_words, &tf_idf_no_stopwords, &phrases);
-    let output_file_path = outputs_folder_path.join(format!("{}_tf-idf_no-stopwords.csv", folder_name));
-    fs::write(&output_file_path, tf_idf_csv_string.as_bytes()).expect("Unable to write file");
+    // More csv files here
 
     let duration = start.elapsed();
     println!("CSV table(s) generated in {} ms", duration.as_millis());
@@ -143,5 +134,5 @@ pub fn main(folder_dir: &String, data: &HashMap<String, Vec<HashMap<String, usiz
     let duration_total = start_total.elapsed();
     println!("TF-IDF analysis completed in {} ms", duration_total.as_millis());
 
-    tf_idf
+    tf_idf_no_stopwords
 }

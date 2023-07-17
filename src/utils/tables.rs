@@ -93,23 +93,25 @@ pub fn combined_file_map_to_csv_string_usize(file_names: &Vec<String>, words_lis
     result
 }
 
-// the same but for f64. IDK how to do generic type?
-pub fn combined_file_map_to_csv_string_f64(file_names: &Vec<String>, words_list: &HashSet<String>, data: &HashMap<String, HashMap<String, f64>>, phrases: &Vec<String>) -> String {
-    // target is a csv file with the following format
-    // headers: word, file1, file2, file3, file4, file5..., total
-    // each row is a word, and the value of that word in each file, and the total value accross all files
-    // the rows are sorted by the word alphabetical order
+// similar to above but for the full size data and f64: HashMap<String, Vec<HashMap<String, f64>>> (includes chapters)
+pub fn tf_idf_combined_file_map_to_csv_string_f64_fullsize(file_names: &Vec<String>, words_list: &HashSet<String>, data: &HashMap<String, Vec<HashMap<String, f64>>>, phrases: &Vec<String>) -> String {
+    // Example:
+    // Word, Book 1, Book 1, Book 1 Total, Book 2, Book 2, Book 2, Book 2 Total, Total
+    // , Ch 1, Ch 2, Book 1 Total, Ch 1, Ch 2, Ch 3, Book 2 Total, Total
+    // coder, 1, 1, 2, 4, 2, 3, 9, 11
 
     println!("\nGenerating a CSV string...");
 
     let start = std::time::Instant::now();
-    // Create a hashmap of <word, total value> so that we can sort the words by their total value
+    // Create a hashmap of <word, total value> so that we can sort the words by their total value (across all files)
     let mut total_value: HashMap<String, f64> = HashMap::new();
     for word in words_list {
         let mut value = 0.0;
-        for (_, word_value) in data {
-            if word_value.contains_key(word) {
-                value += word_value.get(word).unwrap();
+        for (_, chapters) in data {
+            for chapter in chapters {
+                if chapter.contains_key(word) {
+                    value += chapter.get(word).unwrap();
+                }
             }
         }
         total_value.insert(word.clone(), value);
@@ -158,27 +160,49 @@ pub fn combined_file_map_to_csv_string_f64(file_names: &Vec<String>, words_list:
     // Create the csv string
     let start = std::time::Instant::now();
     // create the headers
+    // Header 1 (Word, filename.repeat(chapters+1), ..., Total)
     let mut result = String::from("Words");
     for file_name in file_names {
-        result.push_str(&format!(",{}", file_name));
+        let chapters = data.get(file_name).unwrap().len();
+        for _ in 0..chapters {
+            result.push_str(&format!(",{}", file_name));
+        }
+        result.push_str(&format!(",{} Total", file_name));
     }
-    result.push_str(",Total\n");
+    result.push_str(",Corpus Total\n");
+    // Header 2 ("Documents -->", Ch 1, Ch 2, ..., Ch n, File Total, Ch 1, Ch 2, ..., Ch n, File Total, Total)
+    result.push_str("(Documents -->)");
+    for file_name in file_names {
+        let chapters = data.get(file_name).unwrap().len();
+        for i in 0..chapters {
+            result.push_str(&format!(",#{}", i+1));
+        }
+        result.push_str(&format!(",{} Total", file_name)); // File Total
+    }
+    result.push_str(",Corpus Total\n"); // Corpus Total
 
     // create the rows
     for word in &sorted_words {
         result.push_str(&format!("{}", word));
-        let mut total = 0.0;
+        let mut corpus_total = 0.0;
         for file_name in file_names {
-            if data.get(file_name).unwrap().contains_key(word) {
-                let value = data.get(file_name).unwrap().get(word).unwrap();
-                result.push_str(&format!(",{}", value));
-                total += value;
+            let chapters = data.get(file_name).unwrap().len();
+            let mut file_total = 0.0;
+            for i in 0..chapters {
+                if data.get(file_name).unwrap()[i].contains_key(word) {
+                    let value = data.get(file_name).unwrap()[i].get(word).unwrap();
+                    result.push_str(&format!(",{}", value));
+                    file_total += value;
+                }
+                else {
+                    result.push_str(",0");
+                }
             }
-            else {
-                result.push_str(",0");
-            }
+            result.push_str(&format!(",{}", file_total));
+            corpus_total += file_total;
         }
-        result.push_str(&format!(",{}\n", total));
+
+        result.push_str(&format!(",{}\n", corpus_total));
     }
     let duration = start.elapsed();
     println!("\x1b[2m  Generating csv string in {} ms\x1b[0m", duration.as_millis());
