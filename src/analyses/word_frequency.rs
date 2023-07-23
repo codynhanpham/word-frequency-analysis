@@ -67,16 +67,27 @@ pub fn main(folder_dir: &String, raw_data: HashMap<String, Vec<String>>, data: H
 
     let start = std::time::Instant::now();
     let mut master_word_freq_map: HashMap<String, Vec<HashMap<String, usize>>> = HashMap::new();
-    for (file_name, word_freq_vec) in word_freq {
-        let mut word_freq_vec = word_freq_vec;
-        let phrase_freq_vec = phrase_freq.get(&file_name).unwrap();
-        for (i, word_freq) in word_freq_vec.iter_mut().enumerate() {
-            let phrase_freq = phrase_freq_vec.get(i).unwrap();
-            for (phrase, count) in phrase_freq {
-                word_freq.insert(phrase.clone(), *count);
+    // Combine word_freq and phrase_freq into a single hashmap, merge by the appropriate chapter
+    // Phrase frequency is added to the end of the word frequency vector (same chapter)
+    for (file_name, word_freq_vec) in &word_freq {
+        let mut combined_word_freq_vec: Vec<HashMap<String, usize>> = Vec::new();
+        for (i, word_freq) in word_freq_vec.iter().enumerate() {
+            let mut combined_word_freq: HashMap<String, usize> = HashMap::new();
+            for (word, freq) in word_freq {
+                combined_word_freq.insert(word.clone(), *freq);
             }
+            if phrase_freq.contains_key(file_name) {
+                let phrase_freq_vec = phrase_freq.get(file_name).unwrap();
+                if phrase_freq_vec.len() > i {
+                    let phrase_freq = phrase_freq_vec.get(i).unwrap();
+                    for (phrase, freq) in phrase_freq {
+                        combined_word_freq.insert(phrase.clone(), *freq);
+                    }
+                }
+            }
+            combined_word_freq_vec.push(combined_word_freq);
         }
-        master_word_freq_map.insert(file_name, word_freq_vec);
+        master_word_freq_map.insert(file_name.clone(), combined_word_freq_vec);
     }
 
     let mut simple_word_freq_map: HashMap<String, HashMap<String, usize>> = HashMap::new();

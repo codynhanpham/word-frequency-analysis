@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::collections::{HashMap, HashSet};
 use::rayon::prelude::*;
+use std::sync::{Arc, Mutex};
 use std::fs;
 
 use crate::utils::utils;
@@ -20,7 +21,11 @@ fn calculate_tf_idf(data: &HashMap<String, Vec<HashMap<String, usize>>>) -> Hash
     let mut number_of_documents_with_word: HashMap<String, usize> = HashMap::new();
     for (_, chapters) in data {
         for chapter in chapters {
-            for (word, _) in chapter {
+            for (word, freq) in chapter {
+                // Ignore the entry in this chapter if the frequency is 0
+                if *freq == 0 {
+                    continue;
+                }
                 let count = number_of_documents_with_word.entry(word.clone()).or_insert(0);
                 *count += 1;
             }
@@ -28,18 +33,20 @@ fn calculate_tf_idf(data: &HashMap<String, Vec<HashMap<String, usize>>>) -> Hash
     }
 
     // Calculate TF-IDF in parallel
+    let warning_list: Arc<Mutex<HashSet<String>>> = Arc::new(Mutex::new(HashSet::new()));
     let tf_idf: HashMap<String, Vec<HashMap<String, f64>>> = data 
-        .par_iter()
-        .map(|(file_name, chapters)| {
+        .into_par_iter()
+        .map_init(|| warning_list.clone(), |warning_list, (file_name, chapters)| {
             let mut tf_idf_file: Vec<HashMap<String, f64>> = Vec::new();
             for chapter in chapters {
                 let mut tf_idf_chapter: HashMap<String, f64> = HashMap::new();
                 for (word, frequency) in chapter {
                     let tf = *frequency as f64 / chapter.values().sum::<usize>() as f64;
                     let idf = (number_of_documents as f64 / *number_of_documents_with_word.get(word).unwrap_or(&1) as f64).log10();
-                    // warning if number of documents with the word in it is 0 and was forced to 1
                     if *number_of_documents_with_word.get(word).unwrap_or(&0) == 0 {
-                        println!("\x1b[33m  WARNING: Number of documents with the word \"{}\" in it is 0 and was forced to 1 for IDF calculation\x1b[0m", word);
+                        // Log a warning if number of documents with the word in it is 0 and was forced to 1 if this happens
+                        // println!("\x1b[33m  WARNING: Number of documents with the word \"{}\" in it is 0 and was forced to 1 for IDF calculation\x1b[0m", word);
+                        warning_list.lock().unwrap().insert(word.clone());
                     }
                     tf_idf_chapter.insert(word.clone(), tf * idf);
                 }
@@ -48,6 +55,11 @@ fn calculate_tf_idf(data: &HashMap<String, Vec<HashMap<String, usize>>>) -> Hash
             (file_name.clone(), tf_idf_file)
         })
         .collect();
+
+    // Print warning list
+    for word in warning_list.lock().unwrap().iter() {
+        println!("\x1b[33m  WARNING: Number of documents with the word \"{}\" in it is 0 and was forced to 1 for IDF calculation\x1b[0m", word);
+    }
 
     let duration = start.elapsed();
     println!("\x1b[2m  TF-IDF calculation completed in {} ms\x1b[0m", duration.as_millis());
