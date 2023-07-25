@@ -1,7 +1,7 @@
 [package]
 name = "word-frequency-analysis"
 authors = ["Cody Nhan Pham"]
-version = "0.1.0"
+version = "0.2.2"
 edition = "2021"
 description = "A blazingly fast and simple tool to quickly analyze and visualize the frequency of words in text files."
 license = "MIT"

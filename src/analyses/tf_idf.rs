@@ -146,5 +146,20 @@ pub fn main(folder_dir: &String, data: &HashMap<String, Vec<HashMap<String, usiz
     let duration_total = start_total.elapsed();
     println!("TF-IDF analysis completed in {} ms", duration_total.as_millis());
 
+    // drop all intermediate data
+    drop(tf_idf_no_stopwords_words);
+    drop(tf_idf_csv_string);
+    drop(output_file_path);
+    drop(outputs_folder_path);
+    drop(folder_name);
+    drop(folder_dir_path);
+    drop(file_names);
+    drop(has_chapters);
+    drop(start);
+    drop(duration);
+    drop(start_total);
+    drop(duration_total);
+
+
     tf_idf_no_stopwords
 }

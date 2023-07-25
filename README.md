@@ -6,6 +6,7 @@ A simple tool to quickly analyze and visualize the frequency of words in text fi
 - [x] Normalization of capitalized words
 - [x] Remove [stop words](#stop-words)
 - [x] Specify any additional [target phrases](#the-target-phrases-can-be-specified-in-a-json-file-following-this-format) to include
+- [ ] Lemmatizing text (work in progress)
 - [ ] Visualizations (work in progress)
 
 ### Analyses

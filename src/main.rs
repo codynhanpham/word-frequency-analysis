@@ -86,10 +86,20 @@ fn main() {
     drop(corpus);
     drop(word_freq_map);
     drop(_tf_idf);
-    
+    drop(txt_files);
+    drop(folder_dir);
+    drop(settings);
+    drop(phrases);
+    drop(chapter_separator);
+    drop(start);
+    drop(duration);
+    drop(normalized_corpus);
+    drop(number_of_files);
+
     // wait for user input to exit/restart: blank to restart, anything else to exit
     let input = utils::utils::get_input("Press enter to restart, or type anything to exit...");
     if input == "" {
+        drop(input);
         // Restart
         println!("Trying to clear screen...");
         clearscreen::clear().expect("Failed to clear screen. The program should still work fine, though!\n\n");

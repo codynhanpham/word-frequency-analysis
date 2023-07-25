@@ -161,5 +161,24 @@ pub fn main(folder_dir: &String, raw_data: HashMap<String, Vec<String>>, data: H
     let duration = start_total.elapsed();
     println!("Word frequency analysis completed in {} ms", duration.as_millis());
 
+    // drop all intermediate data
+    drop(file_names);
+    drop(words_complete);
+    drop(words_no_stopword);
+    drop(output_file_path);
+    drop(outputs_folder_path);
+    drop(folder_name);
+    drop(folder_dir_path);
+    drop(start);
+    drop(duration);
+    drop(start_total);
+    drop(duration);
+    drop(simple_word_freq_map_no_stopwords);
+    drop(simple_word_freq_map);
+    drop(phrase_freq);
+    drop(word_freq);
+    drop(csv_string);
+
+
     master_word_freq_map
 }
